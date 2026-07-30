@@ -13,4 +13,7 @@ def create_app():
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
     db.init_app(app)
     CORS(app)
+
+    from app import models
+    
     return app
