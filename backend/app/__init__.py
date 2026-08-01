@@ -1,19 +1,28 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import JWTManager
+from flask_mail import Mail
 from flask_cors import CORS
-from dotenv import load_dotenv
-import os
+from app.config import Config
 
-load_dotenv()
 db = SQLAlchemy()
+jwt = JWTManager()
+mail = Mail()
 
 def create_app():
     app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
-    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+    app.config.from_object(Config)
+
     db.init_app(app)
+    jwt.init_app(app)
+    mail.init_app(app)
     CORS(app)
 
-    from app import models
-    
+    from app import models  # registers models before create_all
+
+    from app.routes.auth import auth_bp
+    from app.routes.menu import menu_bp
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(menu_bp)
+
     return app
