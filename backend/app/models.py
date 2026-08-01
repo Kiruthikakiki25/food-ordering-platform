@@ -8,8 +8,10 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     address = db.Column(db.String(255))
+    is_verified = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    
 class Restaurant(db.Model):
     __tablename__ = 'restaurants'
     id = db.Column(db.Integer, primary_key=True)
@@ -55,5 +57,7 @@ class Payment(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
     razorpay_payment_id = db.Column(db.String(100))
     status = db.Column(db.String(50), default='pending')
+
+    
 
     order = db.relationship('Order', backref='payment', uselist=False)
