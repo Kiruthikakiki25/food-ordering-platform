@@ -26,8 +26,12 @@ def create_app():
     from app.routes.auth import auth_bp
     from app.routes.menu import menu_bp
     from app.routes.orders import orders_bp
+    from app.routes.payments import payments_bp
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(menu_bp)
     app.register_blueprint(orders_bp)
+    app.register_blueprint(payments_bp)
+
 
     return app
