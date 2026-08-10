@@ -31,7 +31,7 @@ export default function Cart() {
         })),
       });
       localStorage.removeItem('cart');
-      navigate(`/orders/${data.order_id}`);
+      navigate(`/checkout/${data.order_id}`);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to place order');
     }
