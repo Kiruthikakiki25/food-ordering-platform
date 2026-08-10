@@ -10,7 +10,17 @@ export default function OrderTracking() {
   const [order, setOrder] = useState(null);
 
   useEffect(() => {
-    client.get(`/orders/${id}`).then((res) => setOrder(res.data));
+    const fetchOrder = () => {
+      client.get(`/orders/${id}`).then((res) => setOrder(res.data));
+    };
+
+    fetchOrder(); // initial load
+
+    const interval = setInterval(() => {
+      fetchOrder();
+    }, 5000); // poll every 5 seconds
+
+    return () => clearInterval(interval); // cleanup on unmount
   }, [id]);
 
   if (!order) {

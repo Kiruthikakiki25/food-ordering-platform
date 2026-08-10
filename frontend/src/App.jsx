@@ -6,6 +6,7 @@ import Register from './pages/Register';
 import RestaurantMenu from './pages/RestaurantMenu';
 import Cart from './pages/Cart';
 import OrderTracking from './pages/OrderTracking';
+import Checkout from "./pages/Checkout";
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="/restaurants/:id" element={<RestaurantMenu />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/orders/:id" element={<OrderTracking />} />
+        <Route path="/checkout/:orderId" element={<Checkout />} />
       </Routes>
     </BrowserRouter>
   );
