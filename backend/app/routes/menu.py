@@ -1,49 +1,43 @@
-from flask import Blueprint, request, jsonify
-from app.models import Restaurant, MenuItem
+from flask import Blueprint, jsonify, request
+from app.models import MenuItem
 
 menu_bp = Blueprint('menu', __name__)
 
-@menu_bp.route('/restaurants', methods=['GET'])
-def list_restaurants():
-    restaurants = Restaurant.query.all()
-    return jsonify([{
-        'id': r.id,
-        'name': r.name,
-        'cuisine': r.cuisine,
-        'rating': r.rating
-    } for r in restaurants]), 200
 
-
-@menu_bp.route('/restaurants/<int:restaurant_id>/menu', methods=['GET'])
-def get_menu(restaurant_id):
-    items = MenuItem.query.filter_by(restaurant_id=restaurant_id).all()
-    if not items:
-        return jsonify({'message': 'No menu items found for this restaurant'}), 404
-
-    return jsonify([{
-        'id': i.id,
-        'name': i.name,
-        'category': i.category,
-        'price': i.price,
-        'veg_flag': i.veg_flag
-    } for i in items]), 200
+@menu_bp.route('/menu', methods=['GET'])
+def list_menu():
+    items = MenuItem.query.filter_by(is_available=True).all()
+    return jsonify([_serialize(item) for item in items])
 
 
 @menu_bp.route('/menu/search', methods=['GET'])
 def search_menu():
-    query = request.args.get('q', '')
-    cuisine = request.args.get('cuisine', '')
+    q = request.args.get('q', '')
+    category = request.args.get('category')
 
-    q = MenuItem.query
-    if query:
-        q = q.filter(MenuItem.name.ilike(f'%{query}%'))
-    if cuisine:
-        q = q.join(Restaurant).filter(Restaurant.cuisine.ilike(f'%{cuisine}%'))
+    query = MenuItem.query.filter_by(is_available=True)
+    if q:
+        query = query.filter(MenuItem.name.ilike(f"%{q}%"))
+    if category:
+        query = query.filter_by(category=category)
 
-    results = q.all()
-    return jsonify([{
-        'id': i.id,
-        'name': i.name,
-        'category': i.category,
-        'price': i.price
-    } for i in results]), 200
+    items = query.all()
+    return jsonify([_serialize(item) for item in items])
+
+
+@menu_bp.route('/menu/<int:item_id>', methods=['GET'])
+def get_menu_item(item_id):
+    item = MenuItem.query.get_or_404(item_id)
+    return jsonify(_serialize(item))
+
+
+def _serialize(item):
+    return {
+        "id": item.id,
+        "name": item.name,
+        "category": item.category,
+        "price": item.price,
+        "veg_flag": item.veg_flag,
+        "cuisine_tags": item.cuisine_tags,
+        "description": item.description,
+    }
