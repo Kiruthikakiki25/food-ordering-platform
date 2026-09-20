@@ -1,25 +1,30 @@
-from flask import Flask
+import logging
+from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_mail import Mail
 from flask_cors import CORS
-from app.config import Config
 from flask_migrate import Migrate
+from sqlalchemy import text
+from app.config import Config
 
 db = SQLAlchemy()
 jwt = JWTManager()
 mail = Mail()
 migrate = Migrate()
 
-def create_app():
+
+def create_app(config_class=Config):
     app = Flask(__name__)
-    app.config.from_object(Config)
+    app.config.from_object(config_class)
+
+    logging.basicConfig(level=logging.INFO)
 
     db.init_app(app)
     jwt.init_app(app)
     mail.init_app(app)
     migrate.init_app(app, db)
-    CORS(app)
+    CORS(app, origins=app.config.get('CORS_ORIGINS', []))
 
     from app import models  # registers models before create_all
 
@@ -35,5 +40,14 @@ def create_app():
     app.register_blueprint(payments_bp)
     app.register_blueprint(branches_bp)
 
+    @app.route('/health', methods=['GET'])
+    def health():
+        """Service status for monitoring; also checks the database connection."""
+        try:
+            db.session.execute(text('SELECT 1'))
+            return jsonify({'status': 'OK', 'database': 'connected'}), 200
+        except Exception as e:
+            app.logger.error(f'Health check failed: {e}')
+            return jsonify({'status': 'ERROR', 'database': 'unreachable'}), 503
 
     return app
