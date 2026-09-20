@@ -6,6 +6,7 @@ import Register from './pages/Register';
 import Menu from './pages/Menu';
 import Cart from './pages/Cart';
 import OrderTracking from './pages/OrderTracking';
+import OrderHistory from './pages/OrderHistory';
 import Checkout from "./pages/Checkout";
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/menu" element={<Menu />} />
         <Route path="/cart" element={<Cart />} />
+        <Route path="/my-orders" element={<OrderHistory />} />
         <Route path="/orders/:id" element={<OrderTracking />} />
         <Route path="/checkout/:orderId" element={<Checkout />} />
       </Routes>
