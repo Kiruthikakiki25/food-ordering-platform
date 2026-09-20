@@ -1,87 +1,59 @@
-# backend/seed.py
-import random
-import pandas as pd
+"""
+seed.py — Seeds branches and a shared menu for the single-brand,
+multi-branch Food Ordering & Delivery Platform.
+
+Run once: python seed.py
+"""
+
 from app import create_app, db
-from app.models import Restaurant, MenuItem
+from app.models import Branch, MenuItem
 
-CSV_PATH = "data/zomato.csv"
+# ---------------------------------------------------------------------
+# Branches — replace with your actual chosen brand's real/plausible
+# locations. Keep the city/pincode fields realistic for your area.
+# ---------------------------------------------------------------------
+BRANCHES = [
+    {"name": "Cantonment",     "address": "12 Cantonment Rd",     "city": "Trichy", "pincode": "620001", "phone": "9840000001"},
+    {"name": "Thillai Nagar",  "address": "45 Thillai Nagar Main Rd", "city": "Trichy", "pincode": "620018", "phone": "9840000002"},
+    {"name": "Srirangam",      "address": "8 Chinthamani St",     "city": "Trichy", "pincode": "620006", "phone": "9840000003"},
+    {"name": "K.K. Nagar",     "address": "22 KK Nagar Main Rd",  "city": "Trichy", "pincode": "620021", "phone": "9840000004"},
+]
 
-# Cuisine -> sample dish name pools, since Zomato dataset has no item-level data
-DISH_POOL = {
-    "Chinese": ["Veg Manchurian", "Chicken Fried Rice", "Hakka Noodles", "Chilli Paneer"],
-    "North Indian": ["Butter Chicken", "Paneer Butter Masala", "Dal Makhani", "Garlic Naan"],
-    "South Indian": ["Masala Dosa", "Idli Sambar", "Vada", "Uttapam"],
-    "Italian": ["Margherita Pizza", "Pasta Alfredo", "Garlic Bread", "Lasagna"],
-    "Fast Food": ["Veg Burger", "French Fries", "Chicken Wrap", "Cold Coffee"],
-    "Bakery": ["Chocolate Cake", "Croissant", "Brownie", "Cupcake"],
-    "Desserts": ["Ice Cream Sundae", "Gulab Jamun", "Waffle", "Kulfi"],
-    "Cafe": ["Cappuccino", "Cold Brew", "Club Sandwich", "Pancakes"],
-}
-DEFAULT_DISHES = ["Chef's Special", "House Combo", "Signature Platter", "Daily Special"]
-
-
-def get_dishes_for_cuisine(cuisine_str):
-    if not isinstance(cuisine_str, str):
-        return DEFAULT_DISHES
-    for tag, dishes in DISH_POOL.items():
-        if tag.lower() in cuisine_str.lower():
-            return dishes
-    return DEFAULT_DISHES
+# ---------------------------------------------------------------------
+# Menu — one shared menu across every branch. Replace/extend with
+# your chosen restaurant's actual (or plausibly reconstructed) menu.
+# This is intentionally a smaller, curated list — not 1,200 fabricated
+# items — since it's one brand's real menu now, not a marketplace.
+# ---------------------------------------------------------------------
+MENU_ITEMS = [
+    {"name": "Paneer Butter Masala", "category": "Main Course", "price": 220, "veg_flag": True,  "cuisine_tags": "North Indian", "description": "Paneer cubes in a rich tomato-butter gravy."},
+    {"name": "Chicken Biryani",      "category": "Main Course", "price": 260, "veg_flag": False, "cuisine_tags": "Biryani",      "description": "Slow-cooked basmati rice with spiced chicken."},
+    {"name": "Veg Fried Rice",       "category": "Main Course", "price": 160, "veg_flag": True,  "cuisine_tags": "Chinese",      "description": "Wok-tossed rice with mixed vegetables."},
+    {"name": "Masala Dosa",          "category": "Breakfast",   "price": 90,  "veg_flag": True,  "cuisine_tags": "South Indian", "description": "Crisp dosa filled with spiced potato masala."},
+    {"name": "Chicken 65",           "category": "Starters",    "price": 190, "veg_flag": False, "cuisine_tags": "South Indian", "description": "Deep-fried spicy chicken bites."},
+    {"name": "Gobi Manchurian",      "category": "Starters",    "price": 150, "veg_flag": True,  "cuisine_tags": "Chinese",      "description": "Crispy cauliflower tossed in Indo-Chinese sauce."},
+    {"name": "Veg Thali",            "category": "Main Course", "price": 180, "veg_flag": True,  "cuisine_tags": "South Indian", "description": "Full-course meal with rice, sambar, rasam, curries."},
+    {"name": "Chicken Kebab",        "category": "Starters",    "price": 210, "veg_flag": False, "cuisine_tags": "North Indian", "description": "Grilled marinated chicken skewers."},
+    {"name": "Gulab Jamun",          "category": "Desserts",    "price": 60,  "veg_flag": True,  "cuisine_tags": "Dessert",      "description": "Fried milk dumplings soaked in sugar syrup."},
+    {"name": "Filter Coffee",        "category": "Beverages",   "price": 30,  "veg_flag": True,  "cuisine_tags": "South Indian", "description": "Classic South Indian filter coffee."},
+]
 
 
 def seed():
-    df = pd.read_csv(CSV_PATH, encoding="latin-1")
-    df = df.drop_duplicates(subset=["Restaurant Name"]).head(300)  # cap for manageable seed size
-
     app = create_app()
     with app.app_context():
-        # Wipe existing seed data so this script is safely re-runnable
-        MenuItem.query.delete()
-        Restaurant.query.delete()
-        db.session.commit()
+        # Branches
+        for b in BRANCHES:
+            if not Branch.query.filter_by(name=b["name"], city=b["city"]).first():
+                db.session.add(Branch(**b))
 
-        for _, row in df.iterrows():
-            name = str(row.get("Restaurant Name", "")).strip()
-            if not name:
-                continue
-
-            cuisine = str(row.get("Cuisines", "Multicuisine"))
-            rating = row.get("Aggregate rating", 0.0)
-            try:
-                rating = float(rating)
-            except (TypeError, ValueError):
-                rating = 0.0
-
-            restaurant = Restaurant(
-                name=name,
-                cuisine=cuisine,
-                rating=rating,
-            )
-            db.session.add(restaurant)
-            db.session.flush()  # get restaurant.id before inserting menu items
-
-            dishes = get_dishes_for_cuisine(cuisine)
-            avg_cost = row.get("Average Cost for two", 400)
-            try:
-                avg_cost = float(avg_cost)
-            except (TypeError, ValueError):
-                avg_cost = 400.0
-            base_price = max(avg_cost / 2, 80)
-
-            for dish_name in dishes:
-                price = round(base_price * random.uniform(0.7, 1.3), 2)
-                menu_item = MenuItem(
-                    restaurant_id=restaurant.id,
-                    name=dish_name,
-                    category="Dessert" if dish_name in DISH_POOL.get("Desserts", []) else "Main",
-                    price=price,
-                    veg_flag=random.choice([True, False]),
-                    cuisine_tags=cuisine,
-                )
-                db.session.add(menu_item)
+        # Menu
+        for item in MENU_ITEMS:
+            if not MenuItem.query.filter_by(name=item["name"]).first():
+                db.session.add(MenuItem(**item))
 
         db.session.commit()
-        print(f"Seeded {Restaurant.query.count()} restaurants and {MenuItem.query.count()} menu items.")
+        print(f"Seeded {len(BRANCHES)} branches and {len(MENU_ITEMS)} menu items.")
 
 
 if __name__ == "__main__":
