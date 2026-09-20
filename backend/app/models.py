@@ -81,3 +81,7 @@ class Payment(db.Model):
     stripe_payment_intent_id = db.Column(db.String(255))
     status = db.Column(db.String(20), default='pending')  # pending | succeeded | failed
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+
+    

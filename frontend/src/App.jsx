@@ -3,7 +3,7 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import RestaurantMenu from './pages/RestaurantMenu';
+import Menu from './pages/Menu';
 import Cart from './pages/Cart';
 import OrderTracking from './pages/OrderTracking';
 import Checkout from "./pages/Checkout";
@@ -16,7 +16,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/restaurants/:id" element={<RestaurantMenu />} />
+        <Route path="/menu" element={<Menu />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/orders/:id" element={<OrderTracking />} />
         <Route path="/checkout/:orderId" element={<Checkout />} />

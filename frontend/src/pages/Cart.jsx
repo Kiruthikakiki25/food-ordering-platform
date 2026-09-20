@@ -1,12 +1,13 @@
 // src/pages/Cart.jsx
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import client from '../api/client';
 
 export default function Cart() {
   const [cart, setCart] = useState(() => JSON.parse(localStorage.getItem('cart') || '[]'));
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const branch = JSON.parse(localStorage.getItem('branch') || 'null');
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
@@ -23,8 +24,13 @@ export default function Cart() {
   };
 
   const handlePlaceOrder = async () => {
+    if (!branch) {
+      setError('Please choose a branch first.');
+      return;
+    }
     try {
       const { data } = await client.post('/orders', {
+        branch_id: branch.id,
         items: cart.map((item) => ({
           menu_item_id: item.menu_item_id,
           quantity: item.quantity,
@@ -33,7 +39,7 @@ export default function Cart() {
       localStorage.removeItem('cart');
       navigate(`/checkout/${data.order_id}`);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to place order');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to place order');
     }
   };
 
@@ -49,6 +55,18 @@ export default function Cart() {
     <div className="min-h-screen bg-orange-50 p-6">
       <div className="max-w-lg mx-auto space-y-4">
         <h1 className="text-2xl font-bold text-stone-900">Your Cart</h1>
+
+        {branch ? (
+          <p className="text-sm text-stone-500">
+            Ordering from <span className="font-semibold">{branch.name}</span> branch ·{' '}
+            <Link to="/" className="text-red-800 underline">change</Link>
+          </p>
+        ) : (
+          <p className="text-sm text-red-600">
+            No branch selected. <Link to="/" className="underline">Choose a branch</Link>
+          </p>
+        )}
+
         {error && <p className="text-red-600 text-sm">{error}</p>}
 
         <div className="bg-white rounded-xl border border-amber-100 divide-y divide-amber-100 shadow-sm">

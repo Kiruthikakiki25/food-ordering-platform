@@ -1,4 +1,6 @@
 import re
+import os
+import threading
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import (
     create_access_token, create_refresh_token,
@@ -15,14 +17,35 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 PASSWORD_REGEX = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$')
 
+HASH_METHOD = 'pbkdf2:sha256'  # light on memory, safe for the free Render plan
+
+
+def _send_async(app, subject, recipient, body):
+    with app.app_context():
+        try:
+            msg = Message(subject, recipients=[recipient], body=body)
+            mail.send(msg)
+        except Exception as e:
+            app.logger.error(f"Mail send failed: {e}")
+
 
 def send_email(subject, recipient, body):
-    """Sends via Flask-Mail if configured, otherwise logs to console for local dev."""
-    if current_app.config.get('MAIL_USERNAME'):
-        msg = Message(subject, recipients=[recipient], body=body)
-        mail.send(msg)
+    """Sends via Flask-Mail in a background thread; never blocks or breaks the request."""
+    app = current_app._get_current_object()
+    if app.config.get('MAIL_USERNAME'):
+        threading.Thread(
+            target=_send_async, args=(app, subject, recipient, body), daemon=True
+        ).start()
     else:
-        current_app.logger.info(f"[DEV EMAIL] To: {recipient}\nSubject: {subject}\n{body}")
+        app.logger.info(f"[DEV EMAIL] To: {recipient}\nSubject: {subject}\n{body}")
+
+
+def _base_url():
+    """Public backend URL. Set BACKEND_URL on Render; falls back to the request host."""
+    url = os.environ.get('BACKEND_URL')
+    if url:
+        return url.rstrip('/') + '/'
+    return request.host_url
 
 
 @auth_bp.route('/register', methods=['POST'])
@@ -51,14 +74,14 @@ def register():
     user = User(
         name=name,
         email=email,
-        password_hash=generate_password_hash(password),
+        password_hash=generate_password_hash(password, method=HASH_METHOD),
         is_verified=False
     )
     db.session.add(user)
     db.session.commit()
 
     token = generate_token(email, salt='email-verify')
-    verify_link = f"{request.host_url}auth/verify-email/{token}"
+    verify_link = f"{_base_url()}auth/verify-email/{token}"
     send_email(
         subject="Verify your email",
         recipient=email,
@@ -66,7 +89,7 @@ def register():
     )
 
     return jsonify({
-        'message': 'Registered. Check your email (or server console in dev mode) to verify your account.',
+        'message': 'Registered. Check your email to verify your account.',
         'user_id': user.id
     }), 201
 
@@ -123,10 +146,10 @@ def forgot_password():
     email = data.get('email')
     user = User.query.filter_by(email=email).first()
 
-    # Always return 200 even if user doesn't exist — avoids leaking which emails are registered
+    # Always return 200 even if user doesn't exist, to avoid leaking which emails are registered
     if user:
         token = generate_token(email, salt='password-reset')
-        reset_link = f"{request.host_url}auth/reset-password/{token}"
+        reset_link = f"{_base_url()}auth/reset-password/{token}"
         send_email(
             subject="Reset your password",
             recipient=email,
@@ -151,7 +174,7 @@ def reset_password(token):
         }), 400
 
     user = User.query.filter_by(email=email).first()
-    user.password_hash = generate_password_hash(new_password)
+    user.password_hash = generate_password_hash(new_password, method=HASH_METHOD)
     db.session.commit()
 
     return jsonify({'message': 'Password reset successful. You can now log in.'}), 200
