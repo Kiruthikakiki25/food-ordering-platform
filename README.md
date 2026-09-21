@@ -6,7 +6,7 @@
 
 - **Live app (frontend):** https://food-ordering-platform-kohl.vercel.app
 - **Live API (backend):** https://food-ordering-platform-qdep.onrender.com (health check: `/health`)
-- **Video demo:** _[add link before Review-III]_
+
 
 > Both free hosting tiers sleep when idle. The first request can take up to 50 seconds.
 
@@ -196,22 +196,7 @@ food-ordering-platform/
 └── README.md
 ```
 
-## Known Limitations
 
-- Verification emails do not send from the deployed server, because Render's free plan blocks SMTP. A planned fix is an HTTPS email API.
-- Order status changes are simulated by a 15-second timer, not by real kitchen or rider updates.
-- There is no separate admin role yet.
-
-## Future Enhancements
-
-- HTTPS email API for verification mail
-- Stripe webhook signature verification
-- Admin / branch-staff role with role-based screens
-- Enhancement feature for Review-III
-
-## License
-
-_[Choose a license, e.g. MIT, and add a LICENSE file]_
 
 ## Author / Contact
 
