@@ -66,11 +66,7 @@ Other diagrams: [ER diagram](docs/diagrams/er-diagram.md), [module diagram](docs
 - CORS limited to the frontend origins
 - Automated tests and CI/CD pipeline
 
-## Screenshots
 
-_[Add screenshots: branch picker, menu, cart, checkout, order tracking, order history, green GitHub Actions run]_
-
-## Getting Started
 
 ### Prerequisites
 - Python 3.10+
