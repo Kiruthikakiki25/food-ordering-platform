@@ -1,28 +1,37 @@
 # Changelog
 
-All notable changes to this project are documented in this file.
+All notable changes at each review are recorded here.
 
-## [Unreleased]
+## [0.2.0] - Review-II (September 2026)
+
+### Changed
+- Scope changed from a multi-restaurant marketplace to **one brand with four branches** and a shared menu.
+- `Restaurant` replaced by `Branch`; `MenuItem` no longer has a branch link.
+- `Order` now stores `branch_id`; `OrderItem` stores `price_at_order`.
+- Payment field renamed to `stripe_payment_intent_id`.
+- Password hashing method changed to `pbkdf2:sha256` (lower memory use on the free hosting plan).
+- CORS limited to the Vercel frontend and localhost.
 
 ### Added
-- `Problem_Statement.md` finalized with entities, roles, success criteria, and scope
-- Architecture Diagram, ER Diagram, and Class/Module Diagram (v1) added to `docs/diagrams/`
-- README v1 with tech stack, features, and local setup instructions
-- LICENSE (MIT) and `.env.example` added
+- Branch picker, shared menu page, cart with `branch_id`, order tracking and order history pages.
+- Stripe test payment, confirmed server-side with Stripe.
+- `/health` endpoint with database check.
+- 12 pytest tests on a temporary SQLite database.
+- GitHub Actions: backend CI/CD (lint, tests, Render deploy hook) and frontend build check.
+- Cloud deployment: Aiven MySQL, Render backend, Vercel frontend.
+- README v2 and design diagrams in `docs/diagrams/`.
 
-## [v0.1-mvp]
+### Fixed
+- Registration no longer crashes the server worker; email is sent in a background thread.
+- Checkout no longer fails with a duplicate payment row on reload.
+- Payment confirmation now verifies the payment with Stripe before marking the order paid.
 
-### Added
-- Flask app factory and project structure (`backend/app/`)
-- Six SQLAlchemy models: `User`, `Restaurant`, `MenuItem`, `Order`, `OrderItem`, `Payment`
-- MySQL database schema created and confirmed
-- Database seeded with 300 restaurants and 1,200 dishes from a Zomato-based dataset
-- JWT authentication routes: register, verify-email, login, refresh, forgot-password, reset-password, me
-- Menu browsing routes: restaurant listing, restaurant menu, search
-- Order and OrderItem routes: create order, list my orders, get order by id, update order status
-- React frontend scaffolded with Vite + Tailwind CSS v4, all core pages built and wired to backend
-- End-to-end cart → order → tracking flow tested and working
-- Stripe payment integration: payment intent creation, Checkout UI styled to app theme, payment confirmation route
-- Order status auto-progression (`placed → preparing → out_for_delivery → delivered`) via background thread
-- Live order tracking on the frontend via polling
-- Flask-Migrate configured for schema migrations
+### Removed
+- Admin role split and `role_required` decorator (out of scope for now).
+
+### Known issues
+- Verification email is blocked on Render's free plan (SMTP).
+- Order status progression is timer-based.
+
+## [0.1.0] - Review-I (MVP)
+- Initial marketplace version (superseded by 0.2.0): auth, restaurant listing, cart, orders.

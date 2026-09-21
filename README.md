@@ -1,152 +1,219 @@
 # Food Ordering & Delivery Platform
 
-A full-stack food ordering and delivery platform with restaurant browsing, cart, order tracking, and real payment integration — built as a Semester-5 capstone project.
+> One restaurant brand, four branches, one shared menu: order, pay and track online.
+
+## Live Demo
+
+- **Live app (frontend):** https://food-ordering-platform-kohl.vercel.app
+- **Live API (backend):** https://food-ordering-platform-qdep.onrender.com (health check: `/health`)
+- **Video demo:** _[add link before Review-III]_
+
+> Both free hosting tiers sleep when idle. The first request can take up to 50 seconds.
 
 ## Overview
 
-This platform lets users browse restaurants and menus, add items to a cart, place orders, pay securely via Stripe, and track their order status in real time as it moves through preparation and delivery. It is seeded with a real-world dataset of 300 restaurants and 1,200 dishes to reflect realistic scale and variety rather than a handful of dummy entries.
+A restaurant chain with several outlets needs one ordering system. A customer picks a nearby branch, browses the brand's menu, pays online and tracks the order. The menu is stored once and shared by every branch. Each order records the branch that prepares it, and the item prices at the time of ordering.
+
+## Architecture Diagram
+
+See [`docs/diagrams/architecture.md`](docs/diagrams/architecture.md).
+
+```mermaid
+flowchart LR
+    U[Customer browser] --> F[React app on Vercel]
+    F -->|REST + JWT| B[Flask API on Render]
+    B --> D[(MySQL on Aiven)]
+    B --> S[Stripe test mode]
+    G[GitHub Actions] -->|tests, then deploy hook| B
+```
+
+Other diagrams: [ER diagram](docs/diagrams/er-diagram.md), [module diagram](docs/diagrams/module-diagram.md).
 
 ## Tech Stack
 
 | Layer | Technology |
-| --- | --- |
-| Frontend | React (Vite) + Tailwind CSS v4 |
-| Backend | Flask + SQLAlchemy |
-| Database | MySQL (via PyMySQL) |
-| Auth | JWT (flask-jwt-extended) |
+|---|---|
+| Frontend | React (Vite), React Router, Axios, Tailwind CSS |
+| Backend | Python, Flask, SQLAlchemy, Flask-Migrate, Flask-JWT-Extended, Flask-Mail |
+| Database | MySQL (Aiven, SSL) |
 | Payments | Stripe (test mode) |
-| Migrations | Flask-Migrate |
+| Testing | pytest (temporary SQLite database) |
+| CI/CD | GitHub Actions |
+| Hosting | Render (backend), Vercel (frontend), Aiven (database) |
 
 ## Features
 
-**Auth**
-- Register, email verification, login, JWT refresh, forgot/reset password
+**Branches and menu**
+- List branches, search by name, city or pincode
+- One shared menu with categories, descriptions and a veg / non-veg indicator
 
-**Restaurants & Menu**
-- Browse restaurants, view menu items per restaurant, search dishes
+**Cart and orders**
+- Cart carries the selected branch into the order
+- Order stores `branch_id` and a price snapshot per item (`price_at_order`)
+- Order history for the logged-in user
 
-**Cart & Orders**
-- Add items to cart, place an order, view order history
-- Order status flow: `placed → preparing → out_for_delivery → delivered`
-- Live order tracking (polls status every 5 seconds)
+**Accounts**
+- Register and login with JWT access and refresh tokens
+- Email verification and password reset flows
+- Password rules: 8+ characters, upper case, lower case, digit
 
-**Payments**
-- Stripe Checkout integrated with Elements, styled to match app theme
-- Payment confirmation updates order status and triggers automatic status progression
+**Payments and tracking**
+- Stripe test payment; the server confirms the payment with Stripe before marking the order paid
+- Order tracking: Placed, Preparing, Out for Delivery, Delivered
+
+**Platform**
+- `/health` endpoint with a database check
+- CORS limited to the frontend origins
+- Automated tests and CI/CD pipeline
+
+## Screenshots
+
+_[Add screenshots: branch picker, menu, cart, checkout, order tracking, order history, green GitHub Actions run]_
 
 ## Getting Started
 
 ### Prerequisites
 - Python 3.10+
-- Node.js 18+
-- MySQL 8 running locally (or a cloud instance)
-- A Stripe account (test mode keys)
+- Node.js 20+
+- MySQL 8 (local or cloud)
+- A Stripe account (test keys)
 
-### Backend Setup
+### Clone
+```bash
+git clone https://github.com/Kiruthikakiki25/food-ordering-platform.git
+cd food-ordering-platform
+```
 
+### Backend
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\Activate.ps1      # Windows PowerShell
+venv\Scripts\activate          # macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
 ```
-
-Create a `.env` file in `backend/` (see `.env.example` for the full list of variables):
-
-```
-DATABASE_URL=mysql+pymysql://<user>:<password>@localhost:3306/food_ordering
-JWT_SECRET_KEY=<your-secret-key>
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_PUBLISHABLE_KEY=pk_test_...
-```
-
-Run migrations and seed the database:
-
+Create `backend/.env` (see the table below), then:
 ```bash
 flask db upgrade
-python seed.py
+python seed.py                 # 4 branches + shared menu
+flask run
 ```
+The API runs at http://localhost:5000.
 
-Start the backend:
-
-```bash
-python run.py
-```
-
-Backend runs at `http://localhost:5000`.
-
-### Frontend Setup
-
+### Frontend
 ```bash
 cd frontend
 npm install
 ```
-
-Create a `.env.local` file in `frontend/`:
-
+Create `frontend/.env.local`:
 ```
 VITE_API_URL=http://localhost:5000
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 ```
-
-Start the frontend:
-
 ```bash
 npm run dev
 ```
-
-Frontend runs at `http://localhost:5173`.
-
-> **Note:** Backend and frontend must run simultaneously in separate terminals.
+The app runs at http://localhost:5173.
 
 ## Environment Variables
 
+**Backend (`backend/.env`, or Render environment)**
+
 | Name | Description | Required |
-| --- | --- | --- |
-| `DATABASE_URL` | MySQL connection string | Yes |
-| `JWT_SECRET_KEY` | Secret key for signing JWTs | Yes |
-| `STRIPE_SECRET_KEY` | Stripe secret key (backend) | Yes |
-| `STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (backend) | Yes |
-| `VITE_API_URL` | Backend base URL (frontend) | Yes |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (frontend) | Yes |
+|---|---|---|
+| `DATABASE_URL` | SQLAlchemy URL, e.g. `mysql+pymysql://user:pass@host:port/db?ssl_ca=ca.pem` | Y |
+| `SECRET_KEY` | Flask secret key | Y |
+| `JWT_SECRET_KEY` | Key used to sign JWTs | Y |
+| `STRIPE_SECRET_KEY` | Stripe secret key (`sk_test_...`) | Y |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe publishable key | N |
+| `CORS_ORIGINS` | Comma-separated allowed frontend origins | N (has defaults) |
+| `BACKEND_URL` | Public backend URL used in email links | N |
+| `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USE_TLS`, `MAIL_USERNAME`, `MAIL_PASSWORD` | SMTP settings for verification and reset mail | N |
+
+**Frontend (`frontend/.env.local`, or Vercel environment)**
+
+| Name | Description | Required |
+|---|---|---|
+| `VITE_API_URL` | Backend base URL, no trailing slash | Y |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (`pk_test_...`) | Y |
+
+Never commit `.env` files. Secrets belong in the hosting platform's environment settings.
+
+## API Documentation
+
+Hosted Swagger docs are not set up yet _(planned)_. Current endpoints:
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/health` | No | Service and database status |
+| GET | `/branches`, `/branches/<id>` | No | List or read branches |
+| GET | `/menu`, `/menu/<id>`, `/menu/search` | No | Shared menu |
+| POST | `/auth/register`, `/auth/login` | No | Create account, get tokens |
+| GET | `/auth/verify-email/<token>` | No | Verify email |
+| POST | `/auth/refresh` | Refresh token | New access token |
+| POST | `/auth/forgot-password`, `/auth/reset-password/<token>` | No | Password reset |
+| GET | `/auth/me` | JWT | Current user |
+| POST | `/orders` | JWT | Place order (`branch_id`, `items`) |
+| GET | `/orders/my-orders`, `/orders/<id>` | JWT | Order history and details |
+| PATCH | `/orders/<id>/status` | JWT | Update order status |
+| POST | `/payments/create-payment-intent` | JWT | Start Stripe payment |
+| POST | `/payments/confirm` | JWT | Confirm payment (verified with Stripe) |
+
+## Running Tests
+
+```bash
+cd backend
+pip install pytest
+pytest -v
+```
+Tests use a temporary in-memory SQLite database and never touch the real database.
+
+## Deployment
+
+- **Database:** Aiven MySQL (free plan, SSL with `ca.pem`)
+- **Backend:** Render web service, root directory `backend`, start command `gunicorn run:app`
+- **Frontend:** Vercel, root directory `frontend`, Vite preset, `vercel.json` rewrites all routes to `index.html`
+- **CI/CD:** `.github/workflows/backend.yml` installs dependencies, lints, runs pytest, and on a push to `main` calls the Render deploy hook (stored as the `RENDER_DEPLOY_HOOK` GitHub secret). `.github/workflows/frontend.yml` builds the frontend.
 
 ## Folder Structure
 
 ```
 food-ordering-platform/
-├─ backend/
-│  ├─ app/
-│  │  ├─ models.py
-│  │  ├─ routes/
-│  │  │  ├─ auth.py
-│  │  │  ├─ menu.py
-│  │  │  ├─ orders.py
-│  │  │  └─ payments.py
-│  │  └─ config.py
-│  ├─ migrations/
-│  ├─ seed.py
-│  └─ run.py
-├─ frontend/
-│  └─ src/
-│     ├─ pages/
-│     ├─ components/
-│     └─ api/
-├─ docs/
-│  └─ diagrams/
-└─ README.md
+├── .github/workflows/     # backend.yml, frontend.yml
+├── backend/
+│   ├── app/
+│   │   ├── routes/        # auth, branches, menu, orders, payments
+│   │   ├── utils/         # token helpers
+│   │   ├── config.py
+│   │   └── models.py
+│   ├── migrations/
+│   ├── tests/
+│   ├── seed.py
+│   └── run.py
+├── frontend/
+│   └── src/               # pages, components, api
+├── docs/diagrams/
+├── CHANGELOG.md
+└── README.md
 ```
+
+## Known Limitations
+
+- Verification emails do not send from the deployed server, because Render's free plan blocks SMTP. A planned fix is an HTTPS email API.
+- Order status changes are simulated by a 15-second timer, not by real kitchen or rider updates.
+- There is no separate admin role yet.
 
 ## Future Enhancements
 
-- Stripe webhook signature verification (replacing the current trust-the-frontend confirm pattern)
-- Admin/restaurant management panel
-- Address management and delivery notifications
-- Cloud deployment (Render + Vercel)
+- HTTPS email API for verification mail
+- Stripe webhook signature verification
+- Admin / branch-staff role with role-based screens
+- Enhancement feature for Review-III
 
 ## License
 
-MIT
+_[Choose a license, e.g. MIT, and add a LICENSE file]_
 
-## Author
+## Author / Contact
 
-Kiruthika S — [GitHub](https://github.com/Kiruthikakiki25)
+**Kiruthika S**: B.Tech AI & Data Science, J.J. College of Engineering and Technology, Trichy
+GitHub: [Kiruthikakiki25](https://github.com/Kiruthikakiki25) | LinkedIn: [kiruthikass](https://linkedin.com/in/kiruthikass)
