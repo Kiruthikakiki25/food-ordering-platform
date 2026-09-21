@@ -2,7 +2,7 @@
 
 All notable changes at each review are recorded here.
 
-## [0.2.0] - Review-II (September 2026)
+## [0.2.0] - Review-II 
 
 ### Changed
 - Scope changed from a multi-restaurant marketplace to **one brand with four branches** and a shared menu.
@@ -26,12 +26,3 @@ All notable changes at each review are recorded here.
 - Checkout no longer fails with a duplicate payment row on reload.
 - Payment confirmation now verifies the payment with Stripe before marking the order paid.
 
-### Removed
-- Admin role split and `role_required` decorator (out of scope for now).
-
-### Known issues
-- Verification email is blocked on Render's free plan (SMTP).
-- Order status progression is timer-based.
-
-## [0.1.0] - Review-I (MVP)
-- Initial marketplace version (superseded by 0.2.0): auth, restaurant listing, cart, orders.
