@@ -1,122 +1,29 @@
+from flask import Blueprint, request, jsonify
 import stripe
 import os
-import threading
-import time
-from flask import Blueprint, request, jsonify, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from app import db
-from app.models import Order, Payment
 
 payments_bp = Blueprint('payments', __name__)
-
-stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
-
-
-@payments_bp.route('/payments/create-payment-intent', methods=['POST'])
-@jwt_required()
-def create_payment_intent():
-    data = request.get_json()
-    order_id = data.get('order_id')
-
-    order = Order.query.get(order_id)
-    if not order:
-        return jsonify({'error': 'Order not found'}), 404
-
-    user_id = get_jwt_identity()
-    if str(order.user_id) != str(user_id):
-        return jsonify({'error': 'Unauthorized'}), 403
-
-    amount_in_paise = int(round(order.total * 100))
-
-    payment = Payment.query.filter_by(order_id=order.id).first()
-
-    # Reuse the existing payment intent if this order already has one
-    if payment and payment.stripe_payment_intent_id:
-        try:
-            intent = stripe.PaymentIntent.retrieve(payment.stripe_payment_intent_id)
-            if intent.status != 'canceled':
-                return jsonify({
-                    'client_secret': intent.client_secret,
-                    'payment_id': payment.id,
-                    'amount': order.total
-                }), 200
-        except stripe.error.StripeError:
-            pass  # fall through and create a fresh intent
+@payments_bp.route('/webhook/stripe', methods=['POST'])
+def stripe_webhook():
+    payload = request.data
+    sig_header = request.headers.get('Stripe-Signature')
+    endpoint_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
 
     try:
-        intent = stripe.PaymentIntent.create(
-            amount=amount_in_paise,
-            currency='inr',
-            metadata={'order_id': order.id}
-        )
-    except stripe.error.StripeError as e:
-        return jsonify({'error': str(e)}), 400
+        event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+    except (ValueError, stripe.error.SignatureVerificationError):
+        return jsonify({"error": "invalid signature"}), 400
 
-    if payment:
-        payment.stripe_payment_intent_id = intent.id
-        payment.status = 'pending'
-    else:
-        payment = Payment(
-            order_id=order.id,
-            stripe_payment_intent_id=intent.id,
-            status='pending'
-        )
-        db.session.add(payment)
-    db.session.commit()
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        order_id = session.get('metadata', {}).get('order_id')
 
-    return jsonify({
-        'client_secret': intent.client_secret,
-        'payment_id': payment.id,
-        'amount': order.total
-    }), 201
+        if not order_id:
+            return jsonify({"received": True}), 200
 
+        order = Order.query.get(order_id)
+        if order:
+            order.status = 'paid'
+            db.session.commit()
 
-def auto_advance_order(app, order_id):
-    stages = ['preparing', 'out_for_delivery', 'delivered']
-    with app.app_context():
-        for stage in stages:
-            time.sleep(15)  # 15 seconds between each stage
-            order = Order.query.get(order_id)
-            if order:
-                order.status = stage
-                db.session.commit()
-
-
-@payments_bp.route('/payments/confirm', methods=['POST'])
-@jwt_required()
-def confirm_payment():
-    data = request.get_json()
-    order_id = data.get('order_id')
-
-    order = Order.query.get(order_id)
-    if not order:
-        return jsonify({'error': 'Order not found'}), 404
-
-    if str(order.user_id) != str(get_jwt_identity()):
-        return jsonify({'error': 'Unauthorized'}), 403
-
-    payment = Payment.query.filter_by(order_id=order_id).first()
-    if not payment or not payment.stripe_payment_intent_id:
-        return jsonify({'error': 'No payment found for this order'}), 400
-
-    # Verify with Stripe that the payment really succeeded
-    try:
-        intent = stripe.PaymentIntent.retrieve(payment.stripe_payment_intent_id)
-    except stripe.error.StripeError as e:
-        return jsonify({'error': str(e)}), 400
-
-    if intent.status != 'succeeded':
-        return jsonify({'error': f'Payment not completed (status: {intent.status})'}), 400
-
-    # Don't start a second progress thread if this was already confirmed
-    if payment.status == 'succeeded':
-        return jsonify({'message': 'Payment already confirmed'}), 200
-
-    payment.status = 'succeeded'
-    order.status = 'placed'
-    db.session.commit()
-
-    app = current_app._get_current_object()
-    threading.Thread(target=auto_advance_order, args=(app, order.id), daemon=True).start()
-
-    return jsonify({'message': 'Payment confirmed, order progressing'}), 200
+    return jsonify({"received": True}), 200
