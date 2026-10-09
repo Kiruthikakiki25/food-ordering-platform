@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import client from '../api/client';
+import SmartSearch from '../components/SmartSearch';
+import RecommendedItems from '../components/RecommendedItems';
 
 export default function Home() {
   const [branches, setBranches] = useState([]);
@@ -47,7 +49,10 @@ export default function Home() {
           className="w-full max-w-md px-4 py-3 rounded-lg bg-white text-stone-800 placeholder-stone-400 shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500"
         />
       </div>
-
+      <div className="max-w-6xl mx-auto px-6">
+  <SmartSearch />
+  <RecommendedItems />
+</div>
       {loading && <p className="text-center text-stone-500 mt-10">Loading branches...</p>}
       {error && <p className="text-center text-red-700 mt-10">{error}</p>}
 
