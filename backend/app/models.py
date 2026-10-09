@@ -11,7 +11,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     address = db.Column(db.String(255))
     is_verified = db.Column(db.Boolean, default=False)
-    role = db.Column(db.String(20), default='customer')  # customer | staff (optional, per branch)
+    role = db.Column(db.String(20), default='customer')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     orders = db.relationship('Order', backref='user', lazy=True)
@@ -21,7 +21,7 @@ class Branch(db.Model):
     __tablename__ = 'branch'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)        # e.g. "Anna Nagar", "T Nagar"
+    name = db.Column(db.String(100), nullable=False)
     address = db.Column(db.String(255), nullable=False)
     city = db.Column(db.String(100), nullable=False)
     pincode = db.Column(db.String(10))
@@ -38,15 +38,19 @@ class MenuItem(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    category = db.Column(db.String(50))          # e.g. Starters, Main Course, Desserts
+    category = db.Column(db.String(50))
     price = db.Column(db.Float, nullable=False)
     veg_flag = db.Column(db.Boolean, default=True)
     cuisine_tags = db.Column(db.String(100))
     description = db.Column(db.String(255))
-    is_available = db.Column(db.Boolean, default=True)   # brand-wide availability toggle
-    # No branch_id / restaurant_id — menu is shared across every branch
+    is_available = db.Column(db.Boolean, default=True)
+
+    # ── NEW columns (nullable so existing rows are safe) ──
+    calorie_count = db.Column(db.Integer, nullable=True)
+    nutrition_info = db.Column(db.JSON, nullable=True)   # {"protein":12,"carbs":45,"fat":8,"fiber":3}
 
     order_items = db.relationship('OrderItem', backref='menu_item', lazy=True)
+    ingredients = db.relationship('Ingredient', backref='menu_item', lazy=True)
 
 
 class Order(db.Model):
@@ -55,7 +59,7 @@ class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     branch_id = db.Column(db.Integer, db.ForeignKey('branch.id'), nullable=False)
-    status = db.Column(db.String(20), default='placed')  # placed -> preparing -> out_for_delivery -> delivered
+    status = db.Column(db.String(20), default='placed')
     total = db.Column(db.Float, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -70,7 +74,7 @@ class OrderItem(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
     menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_item.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
-    price_at_order = db.Column(db.Float, nullable=False)  # snapshot price, in case menu price changes later
+    price_at_order = db.Column(db.Float, nullable=False)
 
 
 class Payment(db.Model):
@@ -79,9 +83,26 @@ class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False, unique=True)
     stripe_payment_intent_id = db.Column(db.String(255))
-    status = db.Column(db.String(20), default='pending')  # pending | succeeded | failed
+    status = db.Column(db.String(20), default='pending')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+# ── NEW MODELS ──────────────────────────────────────────────────────────────
 
-    
+class Ingredient(db.Model):
+    __tablename__ = 'ingredient'
+
+    id = db.Column(db.Integer, primary_key=True)
+    menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_item.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    allergen_flags = db.Column(db.JSON, default=list)   # e.g. ["gluten", "dairy"]
+
+
+class AllergenProfile(db.Model):
+    __tablename__ = 'allergen_profile'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    allergens = db.Column(db.JSON, default=list)        # ["peanuts", "gluten"]
+    dietary_flags = db.Column(db.JSON, default=list)    # ["diabetic", "vegan"]
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)

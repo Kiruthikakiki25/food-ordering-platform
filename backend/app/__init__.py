@@ -33,12 +33,14 @@ def create_app(config_class=Config):
     from app.routes.orders import orders_bp
     from app.routes.payments import payments_bp
     from app.routes.branches import branches_bp
+    from app.routes.ingredients import ingredients_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(menu_bp)
     app.register_blueprint(orders_bp)
     app.register_blueprint(payments_bp)
     app.register_blueprint(branches_bp)
+    app.register_blueprint(ingredients_bp, url_prefix='/api')
 
     @app.route('/health', methods=['GET'])
     def health():

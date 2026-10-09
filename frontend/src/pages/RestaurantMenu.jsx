@@ -1,12 +1,13 @@
-// src/pages/RestaurantMenu.jsx
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import client from '../api/client';
 import MenuItemCard from '../components/MenuItemCard';
+import IngredientPanel from '../components/IngredientPanel';
 
 export default function RestaurantMenu() {
   const { id } = useParams();
   const [menu, setMenu] = useState([]);
+  const [openId, setOpenId] = useState(null);
 
   useEffect(() => {
     client.get(`/restaurants/${id}/menu`).then((res) => setMenu(res.data));
@@ -29,7 +30,16 @@ export default function RestaurantMenu() {
       <div className="max-w-lg mx-auto space-y-3">
         <h1 className="text-2xl font-bold text-stone-900 mb-4">Menu</h1>
         {menu.map((item) => (
-          <MenuItemCard key={item.id} item={item} onAddToCart={handleAddToCart} />
+          <div key={item.id}>
+            <MenuItemCard item={item} onAddToCart={handleAddToCart} />
+            <button
+              onClick={() => setOpenId(openId === item.id ? null : item.id)}
+              className="text-xs text-amber-600 underline mt-1 ml-1"
+            >
+              {openId === item.id ? 'Hide ingredients' : 'Ingredients & Ask AI'}
+            </button>
+            {openId === item.id && <IngredientPanel itemId={item.id} itemName={item.name} />}
+          </div>
         ))}
         {menu.length === 0 && (
           <p className="text-stone-400 text-center mt-10">No items found for this restaurant.</p>
