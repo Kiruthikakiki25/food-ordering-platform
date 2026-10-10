@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import client from '../api/client';
 import MenuItemCard from '../components/MenuItemCard';
+import IngredientPanel from '../components/IngredientPanel';
 
 export default function Menu() {
   const branch = JSON.parse(localStorage.getItem('branch') || 'null');
   const [menu, setMenu] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedItem, setSelectedItem] = useState(null);
 
   useEffect(() => {
     client
@@ -58,7 +60,19 @@ export default function Menu() {
         {error && <p className="text-red-700 text-center">{error}</p>}
 
         {menu.map((item) => (
-          <MenuItemCard key={item.id} item={item} onAddToCart={handleAddToCart} />
+          <div key={item.id}>
+            <div
+              onClick={() => setSelectedItem(selectedItem?.id === item.id ? null : item)}
+              className="cursor-pointer"
+            >
+              <MenuItemCard item={item} onAddToCart={handleAddToCart} />
+            </div>
+            {selectedItem?.id === item.id && (
+              <div className="bg-white rounded-b-xl border border-t-0 border-stone-200 px-4 pb-4">
+                <IngredientPanel itemId={item.id} />
+              </div>
+            )}
+          </div>
         ))}
       </div>
     </div>
