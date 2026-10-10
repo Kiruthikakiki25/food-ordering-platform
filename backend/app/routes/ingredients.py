@@ -103,7 +103,7 @@ def smart_menu_search(restaurant_id):
         })
 
     response = client.chat.completions.create(
-        model="openai/gpt-oss-120b",
+        model="llama-3.3-70b-versatile",
         messages=[
             {
                 "role": "system",
@@ -165,7 +165,7 @@ def get_recommendations():
     ordered_names = [i.name for i in past_items]
 
     response = client.chat.completions.create(
-        model="openai/gpt-oss-120b",
+        model="llama-3.3-70b-versatile",
         messages=[{
             "role": "user",
             "content": f"""A user previously ordered: {ordered_names}.
